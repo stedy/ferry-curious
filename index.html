@@ -3,11 +3,15 @@
 <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
 <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
 <script src="http://d3js.org/topojson.v1.min.js"></script>
+<script type="text/javascript" src="//d3js.org/d3.v3.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.min.js"></script>
+<link rel="stylesheet" href="//cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.css" />
 </head>
 
 <body>
 
-<div id="map" style="width: 600px; height:1400px"></div>
+<div style="width": 100%; overflow="hidden;">
+  <div id="map" style="width: 600px; height:1400px; float:left;"></div>
 <script>
   var map = L.map('map').setView([47.75,-122.8], 9);
 
@@ -19,5 +23,26 @@
             id: 'examples.map-i875mjb7'
   }).addTo(map);
 </script>
+<div id="weekStartOnMonday-b" style="margin-left: 620px;"> Right </div>
+<script type="text/javascript">
+  var cal = new CalHeatMap();
+  cal.init({itemSelector: "#weekStartOnMonday-b",
+            domain: "year",
+            start: new Date(2000, 0),
+            minDate: new Date(2000, 0),
+            maxDate: new Date(2000, 11),
+            subDomain: "x_day",
+            cellSize: 50,
+            subDomainTextFormat: "%d",
+            verticalOrientation: true,
+            range: 1,
+            weekStartOnMonday: false,
+            displayLegend: false,
+            tooltip: true,
+            data: "datas-years.json"
+  });
+</script>
+</div>
 </body>
 </html>
+
