@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<head>
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+<script src='https://api.tiles.mapbox.com/mapbox.js/v2.1.9/mapbox.js'></script>
+<link href='https://api.tiles.mapbox.com/mapbox.js/v2.1.9/mapbox.css' rel='stylesheet' />
+<script type="text/javascript" src="//d3js.org/d3.v3.min.js"></script>
+<script type="text/javascript" src="//cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.min.js"></script>
+<link rel="stylesheet" href="//cdn.jsdelivr.net/cal-heatmap/3.3.10/cal-heatmap.css" />
+</head>
+
+<body>
+
+<div style="width": 100%; overflow="hidden;">
+  <div id="map" style="width: 600px; height:1400px; float:left;"></div>
+<script>
+  L.mapbox.accessToken = 'pk.eyJ1Ijoic3RlZHkiLCJhIjoiUU9kOC1xcyJ9.xmKXVS0kLIjF5hR6rBzTCw';
+  L.mapbox.map('map', 'stedy.1cedd3f3');
+</script>
+<div id="weekStartOnMonday-b" style="margin-left: 620px;"> Right </div>
+<script type="text/javascript">
+  var cal = new CalHeatMap();
+  cal.init({itemSelector: "#weekStartOnMonday-b",
+            domain: "year",
+            start: new Date(2014, 0),
+            minDate: new Date(2014, 0),
+            maxDate: new Date(2014, 11),
+            subDomain: "x_day",
+            cellSize: 50,
+            subDomainTextFormat: "%d",
+            verticalOrientation: true,
+            range: 1,
+            weekStartOnMonday: false,
+            displayLegend: false,
+            tooltip: true,
+            data: "afile.JSON"
+  });
+</script>
+</div>
+</body>
+</html>
+
