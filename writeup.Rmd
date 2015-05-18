@@ -4,10 +4,10 @@ author: "From your friends at SLED analytics"
 ---
 
 
-I (we?) have long been interested in WSDOT ferry data and finally decided to act on that by filing a Public Records Request for raw data for all of 2014 and writing up a brief analysis for Seattle Transit Blog.
+We have long been interested in WSDOT ferry on-time rates and finally decided to file a Public Records Request in an attempt to summarize this data. Here we present findings for on-time rates for calendar year 2014.
 
 ##On time departures
-WSDOT records departure times to the second, so the initial analysis is to simply look at the difference in scheduled departure time versus actual departure time. WSDOT runs a [holiday schedule](http://www.wsdot.wa.gov/Ferries/infodesk/faq/general_info/) on most Federal holidays, so we excluded those dates.
+WSDOT uses GPS trackers on each ferry and is therefore able records departure times to the second, so initially we looked at the difference in scheduled departure time versus actual departure time. Because WSDOT runs a [holiday schedule](http://www.wsdot.wa.gov/Ferries/infodesk/faq/general_info/) on most Federal holidays, we excluded those specific dates.
 
 ```{r, echo=FALSE, fig.width=6}
 suppressPackageStartupMessages(library(dplyr))
@@ -17,29 +17,120 @@ library(ggplot2)
 
 raw <- read.csv("data/PDR-15-1195.csv", colClasses="character")
 raw$scheduled_departure_dt <- as.POSIXlt(raw$scheduled_departure)
-raw$actual_departure <- as.POSIXlt(raw$actual_departure)
-raw$difference <- abs(as.numeric(raw$actual_departure - raw$scheduled_departure_dt) / 60)
 raw$scheduled_departure <- as.Date(raw$scheduled_departure)
+raw$actual_departure_dt <- as.POSIXlt(raw$actual_departure)
+raw$scheduled_hour <- raw$scheduled_departure_dt$hour
+raw$difference <- as.numeric(difftime(raw$actual_departure, raw$scheduled_departure_dt, units = "min"))
+raw$departure_date <- as.Date(raw$scheduled_departure)
 
-holidays <- as.Date(c("2014-01-01", "2014-05-26",
-                      "2014-07-04", "2014-09-01",
-                      "2014-11-27", "2014-11-25"))
-regular.days <-
+#classify days in raw data set
+raw$wday <- raw$scheduled_departure_dt$wday
+raw$day <- "Weekday"
+raw$day[raw$wday == 0 | raw$wday == 6] <- "Weekend"
+
+holidays <- as.Date(c("2014-01-01", "2014-01-20", "2014-02-17",
+                      "2014-05-26", "2014-07-04", "2014-09-01",
+                      "2014-10-13", "2014-11-11",
+                      "2014-11-27", "2014-12-25"))
+raw$day[raw$departure_date %in% holidays] <- "Holiday"
+
+raw$delay <- abs(raw$difference)
+raw$delay[raw$difference < 0] <- NA
+
+all.days <-
   raw %>%
-  subset(scheduled_departure %notin% holidays) %>%
+  #subset(scheduled_departure %notin% holidays) %>%
   select(scheduled_departure, route_name, difference) %>%
   group_by(scheduled_departure, route_name) %>%
   summarise_each(funs(mean), difference)
 
-ggplot(regular.days, aes(scheduled_departure, difference)) +
+ggplot(all.days, aes(scheduled_departure, difference)) +
   geom_point() + stat_smooth()
 ```
 
-The blue line is a trendline showing the mean delay in departure for all ferries which was roughly 3 minutes per ferry in 2014.
+Each point represents the mean departure delay for that date for all ferries with a blue trendline overlaid. As a whole, the average daily delay in ferries was 3.5 minutes in 2014.
 
 ##On time departures by route
 ```{r, echo=FALSE, fig.height=8, fig.width=7}
-ggplot(regular.days, aes(scheduled_departure, difference, group=route_name, color=route_name)) +
+ggplot(all.days, aes(scheduled_departure, difference, group=route_name, color=route_name)) +
   geom_path(alpha = 0.9)
+```
+
+Then we focused only on ferries that sail the lower Puget Sound (ie non-Orcas Islands ferries)
+
+```{r, echo=FALSE, fig.height=8, fig.width=10}
+pugetSound <- c("Fauntleroy - Southworth",
+                "Fauntleroy - Vashon",
+                "Mukilteo - Clinton",
+                "Pt. Defiance - Tahlequah",
+                "Seattle - Bainbridge Island",
+                "Seattle - Bremerton",
+                "Southworth - Vashon",
+                "Keystone - Port Townsend")
+
+pugetSoundRoutes <- 
+  raw %>%
+  subset(delay >= 0 & route_name %in% pugetSound) 
+
+hour.levels <- rev(0:23)
+pugetSoundRoutes$scheduled_hour <- factor(pugetSoundRoutes$scheduled_hour, levels = 23:0, ordered=T)
+names(pugetSoundRoutes)[14:15] <- c("Day", "Delay")
+
+ggplot(pugetSoundRoutes) + theme_bw() +
+  geom_point(aes(departure_date, scheduled_hour, size = Delay, col = Day)) +
+  facet_wrap(~route_name, scales="free") + 
+  scale_size_continuous(range = c(.1, 6)) + 
+  ggtitle("Delays for All 2014 Puget Sound Sailings")+
+  scale_x_date(labels = scales::date_format("%b")) +
+  xlab("Departure Date") + ylab("Scheduled Hour of Departure") +
+  scale_y_discrete(breaks = c(0, 5, 9, 13, 17, 20, 23), labels = c("Midnight", "5 am", "9 am", "1 pm", "5 pm", "8pm", "11pm"))
+  
+```
+
+
+What about looking at the individual boats themselves?
+```{r, echo=FALSE, fig.height=8, fig.width=10}
+
+cleaned <- raw[abs(raw$difference) < 121, ]
+cleaned$week <- lubridate::week(cleaned$departure_date)
+weekly <- do.call('rbind', by(cleaned, interaction(cleaned$week, cleaned$actual_vessel_name), function(x) {
+  data.frame("min" = min(x$difference), 
+             "max" = max(x$difference), 
+             "median" = median(x$difference),
+             "week" = x$week[1],
+             "vessel" = x$actual_vessel_name[1])
+}))
+
+wlong <- reshape2::melt(weekly, id.vars = c("week", "vessel"))
+ggplot(wlong) + theme_bw() + 
+  geom_line(aes(x = week, y = value, linetype = variable)) + 
+  facet_wrap(~vessel, scales="free") + 
+  ggtitle("Difference from Scheduled to Actual Departure WSDOT Ferries 2014\nWeekly Min, Max, and Median - Boxed by Departure Terminal") +
+  xlab("Week of Year") + ylab("Actual Departure Minutes from Scheduled Departure") + 
+  scale_linetype_manual(name = "Weekly Summaries", values = c("dotted", "dashed", "solid"))
+
+```
+
+Finally, lets look at the quantiles
+```{r, echo=FALSE, fig.height=8, fig.width=10}
+medians <- do.call('rbind', by(cleaned, cleaned$route_name, function(x) {
+  data.frame("q05" = as.numeric(quantile(x$difference, .05)), 
+             "q25"= as.numeric(quantile(x$difference, .25)),
+             "q50" = median(x$difference),
+             "q75" = as.numeric(quantile(x$difference, .75)), 
+             "q95" = as.numeric(quantile(x$difference, .95)),
+             "mean" = mean(x$difference), 
+             "route" = x$route_name[1])
+}))
+medians <- arrange(medians, mean)
+medians$route <- factor(medians$route, levels = medians$route)
+mlong <- reshape2::melt(medians, id.vars = "route")
+ggplot(mlong[mlong$variable != "mean", ]) + theme_bw() + 
+  geom_point(aes(x = value, y = route, shape = variable, col = variable)) +
+  scale_colour_discrete(name = "Summary", labels = c("5% quantile", "25% quantile", "median", "75% quantile", "95% quantile")) +
+  scale_shape_discrete(name = "Summary", labels = c("5% quantile", "25% quantile", "median", "75% quantile", "95% quantile")) +
+  ggtitle("WSDOT Ferries 2014 Scheduled vs Actual Departure Time\nSorted by Average Delay Time") + 
+  xlab("Minutes Difference between Scheduled and Actual Departure") +
+  ylab("Route")
 ```
 
