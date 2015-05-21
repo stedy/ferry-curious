@@ -58,23 +58,31 @@ all.days <-
   summarise_each(funs(mean), difference)
 
 ggplot(all.days, aes(scheduled_departure, difference)) +
-  geom_point(size=0.3) + stat_smooth() + xlab("Scheduled departure date") +
-  ylab("Difference in actual vs. scheduled departure time")
+  geom_point(size=0.5) + stat_smooth() + xlab("Scheduled departure date") +
+  ylab("Difference in actual vs. scheduled departure time \n in minutes")
 ```
 
 In Figure 1, we used linear regression to add a trend line to graphically show any trends present in departure time delay. As a whole, the data shows minimal variation in departure time with a large bump in departure delay towards the end of summer. In 2014, the average daily depature delay was approximately 3 minutes for all ferry routes of interest.
 
 ##On time departures by route
-```{r, echo=FALSE, fig.cap="*Figure 2*: Difference in scheduled departure time vs. actual departure time stratified by route."}
-ggplot(all.days, aes(scheduled_departure, difference)) + geom_point(size=0.3) + stat_smooth() +
+```{r, echo=FALSE, fig.cap="*Figure 2*: Difference in scheduled departure time vs. actual departure time as a percentage of maximum delay stratified by route."}
+
+all.days.max <- 
+  all.days %>%
+  group_by(route_name) %>%
+  do(data.frame(max=max(.$difference)))
+
+all.days <- merge(all.days, all.days.max)
+all.days$percentage <- all.days$difference / all.days$max
+
+ggplot(all.days, aes(scheduled_departure, percentage)) + geom_point(size=0.3) + stat_smooth() +
   scale_x_date(labels = scales::date_format("%b")) +
-  facet_wrap(~route_name) + xlab("Scheduled Departure Date") +
-  ylab("Minutes Difference between Scheduled and Actual Departure")
+  facet_wrap(~route_name, scales="free_x") + xlab("Scheduled Departure Date") +
+  ylab("Difference in actual vs. scheduled departure time \n as a percentage of maximum delay")
 ```
 
 ##On time rates based on day
 ```{r, echo=FALSE, fig.width=8, fig.height=6, fig.cap="*Figure 3*: Difference in scheduled departure time vs. actual departure time by day"}
-
 
 pugetSoundRoutes <- 
   raw %>%
@@ -86,7 +94,7 @@ names(pugetSoundRoutes)[14:15] <- c("Day", "Delay")
 
 ggplot(pugetSoundRoutes) + 
   geom_point(aes(departure_date, scheduled_hour, size = Delay, col = Day)) +
-  facet_wrap(~route_name) + 
+  facet_wrap(~route_name, scales="free_x") + 
   scale_size_continuous(range = c(.1, 6)) + 
   ggtitle("Delays for All 2014 Puget Sound Sailings")+
   scale_x_date(labels = scales::date_format("%b")) +
@@ -145,6 +153,7 @@ raw <-
 raw$actual_arrival <- as.Date(raw$Actual_Arrival)
 raw$actual_arrival_dt <- as.POSIXlt(raw$Actual_Arrival)
 raw$crossing <- as.numeric(difftime(raw$actual_arrival_dt, raw$actual_departure_dt, units = "min"))
+
 mean.times <-
   raw %>%
   subset(route_name %in% pugetSound) %>%
@@ -152,9 +161,16 @@ mean.times <-
   group_by(scheduled_departure, route_name) %>%
   summarise_each(funs(mean), crossing)
 
-ggplot(mean.times, aes(scheduled_departure, crossing)) + geom_point(size=0.3) + stat_smooth() +
+max.crossing.times <- 
+  mean.times %>%
+  group_by(route_name) %>%
+  do(data.frame(max=max(.$crossing)))
+
+mean.times <- merge(mean.times, max.crossing.times)
+mean.times$percentage <- mean.times$crossing / mean.times$max
+ggplot(mean.times, aes(scheduled_departure, percentage)) + geom_point(size=0.3) + stat_smooth() +
   scale_x_date(labels = scales::date_format("%b")) +
-  facet_wrap(~route_name) + xlab("Scheduled Departure Date") +
+  facet_wrap(~route_name, scales="free_x") + xlab("Scheduled Departure Date") +
   ylab("Average crossing time in minutes")
 ```
 
