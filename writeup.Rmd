@@ -1,17 +1,19 @@
 ---
 title: "Ferry Curious or How I learned to stop worrying and accept WSDOT"
 author: "From your friends at SLED analytics"
-output: html_document
+output: 
+  html_document:
+    fig_caption: true
 ---
 
 We have long been interested in WSDOT ferry data, specifically on-time rates, and finally decided to file a Public Records Request in an attempt to gain access to this data. Here we present findings for on-time rates for calendar year 2014.
 
-First a few caveats: Because WSDOT runs a [holiday schedule](http://www.wsdot.wa.gov/Ferries/infodesk/faq/general_info/) on most Federal holidays, we excluded those specific dates. Also, for the purposes of brevity for this report we solely focused on the routes in Central Puget Sound (non-Orcas Islands routes).
+First, a few caveats: Because WSDOT runs a [holiday schedule](http://www.wsdot.wa.gov/Ferries/infodesk/faq/general_info/) on most Federal holidays, we specially accounted for those specific dates. Also, for this report we solely focused on the routes in Central Puget Sound (ie non-Orcas Islands routes).
 
 ##On time departures
-WSDOT uses GPS trackers on each ferry and is therefore able to record arrival and departure times to the second, so we initially looked at the difference in scheduled departure time versus actual departure time.
+WSDOT uses GPS trackers on each ferry and is therefore able to record arrival and departure times to the second, so we initially looked at the difference in scheduled departure time vs. actual departure time.
 
-```{r, echo=FALSE, fig.width=6}
+```{r, echo=FALSE, fig.width=6, fig.cap="*Figure 1*: Each point represents the mean departure delay on that date for all ferry routes with a trend line overlaid."}
 suppressPackageStartupMessages(library(dplyr))
 library(ggplot2)
 
@@ -56,23 +58,22 @@ all.days <-
   summarise_each(funs(mean), difference)
 
 ggplot(all.days, aes(scheduled_departure, difference)) +
-  geom_point(size=0.3) + stat_smooth()
+  geom_point(size=0.3) + stat_smooth() + xlab("Scheduled departure date") +
+  ylab("Difference in actual vs. scheduled departure time")
 ```
 
-Each point represents the mean departure delay on that date for all ferries with a trendline (blue) overlaid. As a whole, the data shows variation in departure time is kept pretty minimal with a large bump in departure time variation towards the end of summer. Average daily depature delay in ferries was approximately 3 minutes for all ferry routes of interest.
+In Figure 1, we used linear regression to add a trend line to graphically show any trends present in departure time delay. As a whole, the data shows minimal variation in departure time with a large bump in departure delay towards the end of summer. In 2014, the average daily depature delay was approximately 3 minutes for all ferry routes of interest.
 
-
-```{r, echo=FALSE}
+##On time departures by route
+```{r, echo=FALSE, fig.cap="*Figure 2*: Difference in scheduled departure time vs. actual departure time stratified by route."}
 ggplot(all.days, aes(scheduled_departure, difference)) + geom_point(size=0.3) + stat_smooth() +
   scale_x_date(labels = scales::date_format("%b")) +
-  facet_wrap(~route_name)
+  facet_wrap(~route_name) + xlab("Scheduled Departure Date") +
+  ylab("Minutes Difference between Scheduled and Actual Departure")
 ```
 
-The above figure shows the average daily departure delay for the eight routes of interest over the course of the year. The seasonal trend present in Figure 1 is visible in almost all of these routes as well.
-
-
-Next, we focused only on time delays over the course of the day while accounting for types of days (weekdays, weekends or holidays).
-```{r, echo=FALSE}
+##On time rates based on day
+```{r, echo=FALSE, fig.width=8, fig.height=6, fig.cap="*Figure 3*: Difference in scheduled departure time vs. actual departure time by day"}
 
 
 pugetSoundRoutes <- 
@@ -94,30 +95,27 @@ ggplot(pugetSoundRoutes) +
   
 ```
 
-The above plot shows both number of minutes of delay colored by the type of day for every hour per day for each of the eight routes of interest.
+Again we see the same patterns of variance in departure delay as observed in Figure 2 but we can also see that certain routes (e.g. Seattle - Bainbridge Island) tend to have more delays on the weekend sailings while other routes such as Keystone - Port Townsend tend to have more departure delays during the week.
 
-Focus on only the Seattle-Bainbridge Island Route:
-```{r, echo=FALSE}
+##Seattle - Bainbridge Island
+```{r, echo=FALSE, fig.cap="*Figure 4*: Delay in departure for Seattle - Bainbridge Island route"}
 bi.only <- subset(pugetSoundRoutes, route_name == "Seattle - Bainbridge Island")
 ggplot(bi.only) + 
   geom_point(aes(departure_date, scheduled_hour, size = Delay, col = Day)) +
   facet_wrap(~route_name) + 
   scale_size_continuous(range = c(.1, 6)) + 
-  ggtitle("Delays for All 2014 Seattle - Bainbridge Island Sailings")+
+  ggtitle("Delays for All 2014 Sailings")+
   scale_x_date(labels = scales::date_format("%b")) +
   xlab("Departure Date") + ylab("Scheduled Hour of Departure") +
   scale_y_discrete(breaks = c(0, 5, 9, 13, 17, 20, 23), labels = c("Midnight", "5 am", "9 am", "1 pm", "5 pm", "8pm", "11pm"))
 ```
 
-Basically, try to avoid weekend afternoon sailings in the summer
-
-WSDOT also tracks which boat is used on each route which allows for a look at boat efficiencies over time on a weekly basis
-```{r, echo=FALSE}
+##Summaries for specific ferry boats
+```{r, echo=FALSE, fig.width=8, fig.height=6, fig.cap="*Figure 5*: Weekly min, max, and departure delays by ferry boat"}
 
 cleaned <- 
   raw %>% 
-  subset(abs(difference) < 121 & route_name %in% pugetSound)
-                 
+  subset(difference < 100 & difference >= 0 & route_name %in% pugetSound)
                  
 cleaned$week <- lubridate::week(cleaned$departure_date)
 weekly <- do.call('rbind', by(cleaned, interaction(cleaned$week, cleaned$actual_vessel_name), function(x) {
@@ -132,17 +130,15 @@ wlong <- reshape2::melt(weekly, id.vars = c("week", "vessel"))
 ggplot(wlong) + 
   geom_line(aes(x = week, y = value, linetype = variable)) + 
   facet_wrap(~vessel) + 
-  ggtitle("Difference from Scheduled to Actual Departure WSDOT Ferries 2014\nWeekly Min, Max, and Median - Boxed by Departure Terminal") +
-  xlab("Week of Year") + ylab("Actual Departure Minutes from Scheduled Departure") + 
+  ggtitle("Weekly departure delays by boat") +
+  xlab("Week of Year") + ylab("Minutes Difference between Actual Departure and Scheduled Departure") + 
   scale_linetype_manual(name = "Weekly Summaries", values = c("dotted", "dashed", "solid"))
-
 ```
 
-Interesting to observe how often WSDOT swaps out different boats.
+WSDOT also tracks which boat is used on each route which allows for a look at overall  efficiencies for each ferry boat.
 
-
-We have already looked at departure delays, what about looking at mean crossing times for each boat?
-```{r, echo=FALSE}
+##Average crossing times
+```{r, echo=FALSE, fig.cap="*Figure 6*: Average crossing time by route"}
 raw <- 
   raw %>%
   subset(Actual_Arrival != "NULL")
@@ -158,40 +154,11 @@ mean.times <-
 
 ggplot(mean.times, aes(scheduled_departure, crossing)) + geom_point(size=0.3) + stat_smooth() +
   scale_x_date(labels = scales::date_format("%b")) +
-  facet_wrap(~route_name)
+  facet_wrap(~route_name) + xlab("Scheduled Departure Date") +
+  ylab("Average crossing time in minutes")
 ```
 
-The above figures show that most ferries are very consistent after departure with the exception of the Fauntleroy - Southworth and Keystone - Port Townsend routes, which show a fair amount of variation. This is reflected in the following table showing standard deviation:
+Figure 6 shows that most ferries are very consistent after departure with the exception of the Fauntleroy - Southworth and Keystone - Port Townsend routes, which both show a fair amount of variation. Because this figure only looks at crossing times, any variation in trip length is due to factors that occurred while sailing.
 
-```{r, echo=FALSE}
-var.table <- plyr::ddply(mean.times, "route_name", function(x) data.frame(variation=var(x$crossing))) 
-knitr::kable(var.table)
-```
-Because these figures only look at crossing times, any variation in trip length is due to factors that must be addressed by the ferry captain.
-
-
-Finally, lets look at the quantiles for the eight routes of interest sorted by average delay time
-```{r, echo=FALSE}
-medians <- do.call('rbind', by(cleaned, cleaned$route_name, function(x) {
-  data.frame("q05" = as.numeric(quantile(x$difference, .05)), 
-             "q25"= as.numeric(quantile(x$difference, .25)),
-             "q50" = median(x$difference),
-             "q75" = as.numeric(quantile(x$difference, .75)), 
-             "q95" = as.numeric(quantile(x$difference, .95)),
-             "mean" = mean(x$difference), 
-             "route" = x$route_name[1])
-}))
-medians <- arrange(medians, mean)
-medians$route <- factor(medians$route, levels = medians$route)
-mlong <- reshape2::melt(medians, id.vars = "route")
-ggplot(mlong[mlong$variable != "mean", ]) + 
-  geom_point(aes(x = value, y = route, shape = variable, col = variable)) +
-  scale_colour_discrete(name = "Summary", labels = c("5% quantile", "25% quantile", "median", "75% quantile", "95% quantile")) +
-  scale_shape_discrete(name = "Summary", labels = c("5% quantile", "25% quantile", "median", "75% quantile", "95% quantile")) +
-  ggtitle("WSDOT Ferries 2014 Scheduled vs Actual Departure Time\nSorted by Average Delay Time") + 
-  xlab("Minutes Difference between Scheduled and Actual Departure") +
-  ylab("Route")
-```
-
-
-One thing we would definitely be interested in would be the ferry capacity each day but that will have to wait for another analysis.
+##Conclusion
+In conclusion, we observed that WSDOT ferries are generally very consistent and there is some ability to predict delays in advance (such as a summer weekend afternoon sailing). Ideally we would have been able to add external covariates such as weather or automobile traffic which might have been informative in helping to further explain these trends.
