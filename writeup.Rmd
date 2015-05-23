@@ -8,7 +8,7 @@ output:
 
 We have long been interested in WSDOT ferry data, specifically on-time rates, and finally decided to file a Public Records Request in an attempt to gain access to this data. Here we present findings for on-time rates for calendar year 2014.
 
-First, a few caveats: Because WSDOT runs a [holiday schedule](http://www.wsdot.wa.gov/Ferries/infodesk/faq/general_info/) on most Federal holidays, we specifically accounted for those dates. Also, for this report we solely focused on routes in Central Puget Sound (ie non-Orcas Islands routes).
+First, a few caveats: Because WSDOT runs a [holiday schedule](http://www.wsdot.wa.gov/Ferries/infodesk/faq/general_info/) on most Federal holidays, we specifically accounted for those dates. Also, for this report we solely focused on routes in Central Puget Sound (i.e. non-Orcas Islands routes).
 
 ##On time departures
 WSDOT uses GPS trackers to monitor each ferry and is therefore able to record arrival and departure times to the second, so we initially looked at the difference in scheduled departure time vs. actual departure time.
@@ -59,30 +59,22 @@ all.days <-
   summarise_each(funs(mean), difference)
 
 ggplot(all.days, aes(scheduled_departure, difference)) +
-  geom_point(size=0.5) + stat_smooth() + xlab("Scheduled departure date") +
+  geom_point() + stat_smooth(lwd=2) + xlab("Scheduled departure date") +
   ylab("Difference in scheduled vs. actual departure time \n in minutes")
 ```
 
-In Figure 1, we used linear regression to add a trend line to graphically show any trends present in departure time delay. As a whole, the data shows minimal variation in departure time with a modest bump in departure delay towards the end of summer. In 2014, the average daily depature delay was approximately 3 minutes for all ferry routes of interest. There were some days where the ferry left early enough ahead of schedule to push the overall mean for that route on that day below zero although it is unclear why this happened.
+In Figure 1, we used linear regression to add a trend line to graphically show trends in departure time delay. As a whole, the data shows minimal variation in departure time with a modest bump in departure delay towards the end of summer. In 2014, the average daily departure delay was approximately 3 minutes for all ferry routes of interest. The data points less than zero are due to days where the ferry left early enough ahead of schedule to push the overall mean for that route on that day below zero. It is unclear why this happened.
 
 ##On time departures by route
 ```{r, echo=FALSE, fig.cap="*Figure 2*: Difference in scheduled departure time vs. actual departure time as a percentage of maximum delay stratified by route.", fig.width=8, fig.height=6}
 
-all.days.max <- 
-  all.days %>%
-  group_by(route_name) %>%
-  do(data.frame(max=max(.$difference)))
-
-all.days <- merge(all.days, all.days.max)
-all.days$percentage <- all.days$difference / all.days$max
-
-ggplot(all.days, aes(scheduled_departure, percentage)) + geom_point(size=0.3) + stat_smooth() +
+ggplot(all.days, aes(scheduled_departure, difference)) + geom_point(size=0.3) + stat_smooth() +
   scale_x_date(labels = scales::date_format("%b")) +
   facet_wrap(~route_name, scales="free_x") + xlab("Scheduled Departure Date") +
-  ylab("Difference in scheduled vs. actual departure time \n as a percentage of maximum delay")
+  ylab("Difference in scheduled vs. actual departure time in minutes")
 ```
 
-For Figure 2 we took the maximum delay for each route in 2014 and compared the daily average delay to that maximum value. This allows for a better insight into the daily delay values as well as normalizes all the routes for an easier comparison.
+For Figure 2 we took the same delay for each route in 2014 as in Figure 1 but stratified it based on route.
 
 ##On time rates based on day
 ```{r, echo=FALSE, fig.width=8, fig.height=6, fig.cap="*Figure 3*: Difference in scheduled departure time vs. actual departure time by day"}
@@ -106,10 +98,30 @@ ggplot(pugetSoundRoutes) +
   
 ```
 
-This is a slightly different plot with dots of varying sizes representing delays by day with the dot color representing the tyoe of day. Again we see the same patterns of variance in departure delay as observed in Figure 2 but we can also see that certain routes (e.g. Seattle - Bainbridge Island) tend to have more delays on the weekend sailings while other routes such as Keystone - Port Townsend tend to have more departure delays during the week.
+This is a slightly different plot with dots of varying sizes representing delays by day with the dot color representing the type of day. Again we see the same patterns of variance in departure delay as observed in Figure 2 but we can also see that certain routes (e.g. Seattle - Bainbridge Island) tend to have more delays on the weekend sailings while other routes such as Keystone - Port Townsend tend to have more departure delays during the week.
+
+##Fauntleroy - Vashon - Southworth
+
+```{r, echo=FALSE, fig.cap="*Figure 4*: Delay in departure for combined Fauntleroy - Southworth - Vashon routes"}
+fvs <- subset(pugetSoundRoutes, route_name %in% c("Fauntleroy - Southworth",
+                "Fauntleroy - Vashon", "Southworth - Vashon"))
+fvs$route_name <- "Fauntleroy - Southworth - Vashon"        
+              
+ggplot(fvs) + 
+  geom_point(aes(departure_date, scheduled_hour, size = Delay, col = Day)) +
+  facet_wrap(~route_name) + 
+  scale_size_continuous(range = c(.1, 6)) + 
+  ggtitle("Delays for All 2014 Sailings")+
+  scale_x_date(labels = scales::date_format("%b")) +
+  xlab("Departure Date") + ylab("Scheduled Hour of Departure") +
+  scale_y_discrete(breaks = c(0, 5, 9, 13, 17, 20, 23), labels = c("Midnight", "5 am", "9 am", "1 pm", "5 pm", "8pm", "11pm"))
+```
+
+WSDOT reports their ferry data on a route-specific level but there are some complications with the Fauntleroy - Southworth - Vashon route due to the three routes being interconnected. For this analysis these three routes were combined into Figure 4.
+
 
 ##Seattle - Bainbridge Island
-```{r, echo=FALSE, fig.cap="*Figure 4*: Delay in departure for Seattle - Bainbridge Island route"}
+```{r, echo=FALSE, fig.cap="*Figure 5*: Delay in departure for Seattle - Bainbridge Island route"}
 bi.only <- subset(pugetSoundRoutes, route_name == "Seattle - Bainbridge Island")
 ggplot(bi.only) + 
   geom_point(aes(departure_date, scheduled_hour, size = Delay, col = Day)) +
@@ -121,10 +133,10 @@ ggplot(bi.only) +
   scale_y_discrete(breaks = c(0, 5, 9, 13, 17, 20, 23), labels = c("Midnight", "5 am", "9 am", "1 pm", "5 pm", "8pm", "11pm"))
 ```
 
-Same plot as above but just focusing on Seattle - Bainbridge Route
+Same plot as Figure 3 but just focusing on Seattle - Bainbridge Route
 
 ##Average crossing times
-```{r, echo=FALSE, fig.cap="*Figure 5*: Average crossing time by route"}
+```{r, echo=FALSE, fig.cap="*Figure 6*: Average crossing time by route"}
 raw <- 
   raw %>%
   subset(Actual_Arrival != "NULL")
@@ -152,7 +164,7 @@ ggplot(mean.times, aes(scheduled_departure, percentage)) + geom_point(size=0.3) 
   ylab("Average crossing time in minutes as a percentage of \n 2014 mean crossing time")
 ```
 
-Figure 5 used the mean crossing time for each route for 2014 compared to the mean crossing time for that day to display changes in crossing times over the course of the year. Because this figure only looks at crossing times, any variation in trip length is due to factors that occurred while sailing.
+Figure 6 used the mean crossing time for each route for 2014 compared to the mean crossing time for that day to display changes in crossing times over the course of the year. Because this figure only looks at crossing times, any variation in trip length is due to factors that occurred while sailing.
 
 ##Conclusion
 In conclusion, we observed that WSDOT ferries are generally very consistent and there is some ability to predict delays in advance (such as a summer weekend afternoon sailing). Ideally we would have been able to add external covariates such as weather or automobile traffic which might have been informative in helping to further explain these trends.
