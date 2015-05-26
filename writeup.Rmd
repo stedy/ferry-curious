@@ -6,7 +6,10 @@ output:
     fig_caption: true
 ---
 
-We have long been interested in WSDOT ferry data, specifically on-time rates, and finally decided to file a Public Records Request in an attempt to gain access to this data. Here we present findings for on-time rates for calendar year 2014.
+
+Although the majority of posts on this blog cover Metro, we wanted to shift the focus a bit to look at another transit method - ferries. It seems that the majority of the coverage of WSDOT ferries focuses on the fiscal side such as costs of ferry maintenance and replacement as well was critical examinations of ferry employee salaries.
+We wanted to shift the conversation slightly and focus on the logistical aspect of the ferry system. Are the ferries generally on time and can delays be predicted?
+To achieve this we filed a Public Records Request to gain access to this data. Here we present findings for on-time rates for calendar year 2014.
 
 First, a few caveats: Because WSDOT runs a [holiday schedule](http://www.wsdot.wa.gov/Ferries/infodesk/faq/general_info/) on most Federal holidays, we specifically accounted for those dates. Also, for this report we solely focused on routes in Central Puget Sound (i.e. non-Orcas Islands routes).
 
@@ -101,6 +104,8 @@ ggplot(pugetSoundRoutes) +
 This is a slightly different plot with dots of varying sizes representing delays by day with the dot color representing the type of day. Again we see the same patterns of variance in departure delay as observed in Figure 2 but we can also see that certain routes (e.g. Seattle - Bainbridge Island) tend to have more delays on the weekend sailings while other routes such as Keystone - Port Townsend tend to have more departure delays during the week.
 
 ##Fauntleroy - Vashon - Southworth
+One could arguably say that Vashon - Fauntleroy and Seattle - Bainbridge Island are the two largest commuter ferries so we focused on those individually.
+
 
 ```{r, echo=FALSE, fig.cap="*Figure 4*: Delay in departure for combined Fauntleroy - Southworth - Vashon routes"}
 fvs <- subset(pugetSoundRoutes, route_name %in% c("Fauntleroy - Southworth",
@@ -167,4 +172,5 @@ ggplot(mean.times, aes(scheduled_departure, percentage)) + geom_point(size=0.3) 
 Figure 6 used the mean crossing time for each route for 2014 compared to the mean crossing time for that day to display changes in crossing times over the course of the year. Because this figure only looks at crossing times, any variation in trip length is due to factors that occurred while sailing.
 
 ##Conclusion
-In conclusion, we observed that WSDOT ferries are generally very consistent and there is some ability to predict delays in advance (such as a summer weekend afternoon sailing). Ideally we would have been able to add external covariates such as weather or automobile traffic which might have been informative in helping to further explain these trends.
+In conclusion, we observed that WSDOT ferries are generally very consistent and there is some ability to predict delays in advance (such as a summer weekend afternoon sailing). 
+With the introduction of reservations and better online notification of ferry capacity, we feel that WSDOT is attempting to make for a smoother sailing experience but is also dealing with the same issues related to rapid population growth that face many other transit services in the state.
