@@ -1,14 +1,15 @@
 ---
 title: "Ferry Curious or How I learned to stop worrying and accept WSDOT"
 author: "From your friends at SLED analytics"
-output: 
+output:
   html_document:
     fig_caption: true
 ---
 
 
-Although the majority of posts on this blog cover Metro, we wanted to shift the focus a bit to look at another transit method - ferries. It seems that the majority of the coverage of WSDOT ferries focuses on the fiscal side such as costs of ferry maintenance and replacement as well was critical examinations of ferry employee salaries.
-We wanted to shift the conversation slightly and focus on the logistical aspect of the ferry system. Are the ferries generally on time and can delays be predicted?
+Although the majority of posts on this blog cover Metro, we wanted to shift the focus a bit to look at another transit method - WSDOT ferry service.
+Ferry coverage is limited and any coverage often seems limited to the fiscal side such as costs of ferry maintenance and replacement as well as critical examinations of ferry employee salaries.
+We wanted to shift the conversation slightly and focus on the logistical aspects of the ferry system. Are the ferries generally on time and can delays be predicted?
 To achieve this we filed a Public Records Request to gain access to this data. Here we present findings for on-time rates for calendar year 2014.
 
 First, a few caveats: Because WSDOT runs a [holiday schedule](http://www.wsdot.wa.gov/Ferries/infodesk/faq/general_info/) on most Federal holidays, we specifically accounted for those dates. Also, for this report we solely focused on routes in Central Puget Sound (i.e. non-Orcas Islands routes).
@@ -82,23 +83,23 @@ For Figure 2 we took the same delay for each route in 2014 as in Figure 1 but st
 ##On time rates based on day
 ```{r, echo=FALSE, fig.width=8, fig.height=6, fig.cap="*Figure 3*: Difference in scheduled departure time vs. actual departure time by day"}
 
-pugetSoundRoutes <- 
+pugetSoundRoutes <-
   raw %>%
-  subset(delay >= 0 & route_name %in% pugetSound) 
+  subset(delay >= 0 & route_name %in% pugetSound)
 
 hour.levels <- rev(0:23)
 pugetSoundRoutes$scheduled_hour <- factor(pugetSoundRoutes$scheduled_hour, levels = 23:0, ordered=T)
 names(pugetSoundRoutes)[14:15] <- c("Day", "Delay")
 
-ggplot(pugetSoundRoutes) + 
+ggplot(pugetSoundRoutes) +
   geom_point(aes(departure_date, scheduled_hour, size = Delay, col = Day)) +
-  facet_wrap(~route_name, scales="free_x") + 
-  scale_size_continuous(range = c(.1, 6)) + 
+  facet_wrap(~route_name, scales="free_x") +
+  scale_size_continuous(range = c(.1, 6)) +
   ggtitle("Delays for All 2014 Puget Sound Sailings")+
   scale_x_date(labels = scales::date_format("%b")) +
   xlab("Departure Date") + ylab("Scheduled Hour of Departure") +
   scale_y_discrete(breaks = c(0, 5, 9, 13, 17, 20, 23), labels = c("Midnight", "5 am", "9 am", "1 pm", "5 pm", "8pm", "11pm"))
-  
+
 ```
 
 This is a slightly different plot with dots of varying sizes representing delays by day with the dot color representing the type of day. Again we see the same patterns of variance in departure delay as observed in Figure 2 but we can also see that certain routes (e.g. Seattle - Bainbridge Island) tend to have more delays on the weekend sailings while other routes such as Keystone - Port Townsend tend to have more departure delays during the week.
@@ -110,12 +111,12 @@ One could arguably say that Vashon - Fauntleroy and Seattle - Bainbridge Island 
 ```{r, echo=FALSE, fig.cap="*Figure 4*: Delay in departure for combined Fauntleroy - Southworth - Vashon routes"}
 fvs <- subset(pugetSoundRoutes, route_name %in% c("Fauntleroy - Southworth",
                 "Fauntleroy - Vashon", "Southworth - Vashon"))
-fvs$route_name <- "Fauntleroy - Southworth - Vashon"        
-              
-ggplot(fvs) + 
+fvs$route_name <- "Fauntleroy - Southworth - Vashon"
+
+ggplot(fvs) +
   geom_point(aes(departure_date, scheduled_hour, size = Delay, col = Day)) +
-  facet_wrap(~route_name) + 
-  scale_size_continuous(range = c(.1, 6)) + 
+  facet_wrap(~route_name) +
+  scale_size_continuous(range = c(.1, 6)) +
   ggtitle("Delays for All 2014 Sailings")+
   scale_x_date(labels = scales::date_format("%b")) +
   xlab("Departure Date") + ylab("Scheduled Hour of Departure") +
@@ -128,10 +129,10 @@ WSDOT reports their ferry data on a route-specific level but there are some comp
 ##Seattle - Bainbridge Island
 ```{r, echo=FALSE, fig.cap="*Figure 5*: Delay in departure for Seattle - Bainbridge Island route"}
 bi.only <- subset(pugetSoundRoutes, route_name == "Seattle - Bainbridge Island")
-ggplot(bi.only) + 
+ggplot(bi.only) +
   geom_point(aes(departure_date, scheduled_hour, size = Delay, col = Day)) +
-  facet_wrap(~route_name) + 
-  scale_size_continuous(range = c(.1, 6)) + 
+  facet_wrap(~route_name) +
+  scale_size_continuous(range = c(.1, 6)) +
   ggtitle("Delays for All 2014 Sailings")+
   scale_x_date(labels = scales::date_format("%b")) +
   xlab("Departure Date") + ylab("Scheduled Hour of Departure") +
@@ -142,7 +143,7 @@ Same plot as Figure 3 but just focusing on Seattle - Bainbridge Route
 
 ##Average crossing times
 ```{r, echo=FALSE, fig.cap="*Figure 6*: Average crossing time by route"}
-raw <- 
+raw <-
   raw %>%
   subset(Actual_Arrival != "NULL")
 raw$actual_arrival <- as.Date(raw$Actual_Arrival)
@@ -156,7 +157,7 @@ mean.times <-
   group_by(scheduled_departure, route_name) %>%
   summarise_each(funs(mean), crossing)
 
-routemean.crossing.times <- 
+routemean.crossing.times <-
   mean.times %>%
   group_by(route_name) %>%
   do(data.frame(routemean=mean(.$crossing)))
@@ -172,5 +173,5 @@ ggplot(mean.times, aes(scheduled_departure, percentage)) + geom_point(size=0.3) 
 Figure 6 used the mean crossing time for each route for 2014 compared to the mean crossing time for that day to display changes in crossing times over the course of the year. Because this figure only looks at crossing times, any variation in trip length is due to factors that occurred while sailing.
 
 ##Conclusion
-In conclusion, we observed that WSDOT ferries are generally very consistent and there is some ability to predict delays in advance (such as a summer weekend afternoon sailing). 
+In conclusion, we observed that WSDOT ferries are generally very consistent and there is some ability to predict delays in advance (such as a summer weekend afternoon sailing).
 With the introduction of reservations and better online notification of ferry capacity, we feel that WSDOT is attempting to make for a smoother sailing experience but is also dealing with the same issues related to rapid population growth that face many other transit services in the state.
