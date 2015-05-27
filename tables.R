@@ -1,3 +1,7 @@
+library(dplyr)
+library(tidyr)
+library(xtable)
+
 
 # Make a table
 pugetSound
@@ -89,13 +93,30 @@ xtable(delays, row.names = FALSE)
 
 
 # Table by month of year...
-puget$month <- lubridate::month(puget$departure_date, label = TRUE, abbr = FALSE)
-puget$wday <- lubridate::wday(puget$departure_date, label = TRUE, abbr = FALSE)
+puget$month <- lubridate::month(puget$departure_date, label = TRUE, abbr = TRUE)
+puget$wday <- lubridate::wday(puget$departure_date, label = TRUE, abbr = TRUE)
 #puget$wday[puget$departure_date %in% holidays] <- "Federal Holiday"
 
-xtable(aggregate(difference ~ month, data = puget, FUN = mean))
+byMonth <- aggregate(difference ~ month * route_name, data = puget, FUN = mean)
+byMonth <- spread(byMonth, month, difference)
+byMonth <- cbind(byMonth, rowMeans(byMonth[, -1]))
+names(byMonth)[14] <- "Ave"
+byMonth <- plyr::arrange(byMonth, Ave)
+byMonth <- rbind(byMonth, c(NA, colMeans(byMonth[, -1])))
 
 
-xtable(aggregate(difference ~ wday, data = puget, FUN = mean))
+xtable(byMonth, digits = 1)
 
+xtable(aggregate(difference ~ month * route, data = puget, FUN = mean))
+
+
+byDay <- aggregate(difference ~ wday * route_name, data = puget, FUN = mean)
+
+byDay <- spread(byDay, wday, difference)
+byDay <- cbind(byDay, rowMeans(byDay[, -1]))
+names(byDay)[9] <- "Ave"
+byDay <- plyr::arrange(byDay, Ave)
+byDay <- rbind(byDay, c(NA, colMeans(byDay[, -1])))
+
+xtable(byDay, digits = 1)
 
